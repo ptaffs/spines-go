@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Spines!</title>
+<style>
+body {
+  margin:0
+  height: 100%;
+  overflow-y: hidden;
+}
+#container {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+}
+
+#controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 3rem;
+  background-color:#009900;
+  text-align:left;
+  vertical-align:top;
+}
+
+#placehere {
+  position: absolute;
+  top: 3rem;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  background-color:#990000;
+  text-align:left;
+  color:#FFFFFF;
+}
+
+#coverview {
+  position: absolute;
+  top: 4rem;
+  left:4rem;
+}
+
+#cover {
+  border: 1px green solid;
+}
+
+#flip {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.zoomable {
+  transition: transform 0.2s ease;
+}
+
+.zoomable:hover {
+  transform: scale(2);
+}
+
+</style>
+</head>
+<body>
+<div id="container">
+<div id="controls">
+
+<svg xmlns="http://www.w3.org/2000/svg" style="width: 2rem; height: 2rem;" shape-rendering="geometricPrecision"
+	fill-rule="evenodd"  viewBox="0 0 512 512" onclick="fnPause();" >
+	<circle fill="#EF4136" cx="256" cy="256" r="256" />
+	<path fill="#FF7C73" d="M256 9.36c136.12 0 246.46 110.35 246.46 246.46 0 3.22-.08 6.42-.21 9.62C497.2 133.78 388.89 28.59 256 28.59S14.8 133.78 9.75 265.44c-.13-3.2-.21-6.4-.21-9.62C9.54 119.71 119.88 9.36 256 9.36z" />
+	<path fill="#fff" d="M185.75 144.17h39.17c6.48 0 11.77 5.32 11.77 11.78v200.1c0 6.47-5.31 11.78-11.77 11.78h-39.17c-6.46 0-11.77-5.3-11.77-11.78v-200.1c0-6.48 5.29-11.78 11.77-11.78zm101.33 0h39.17c6.48 0 11.77 5.32 11.77 11.78v200.1c0 6.47-5.31 11.78-11.77 11.78h-39.17c-6.46 0-11.77-5.3-11.77-11.78v-200.1c0-6.48 5.29-11.78 11.77-11.78z" />
+</svg>
+
+<img id="topspine" style="width: 50vw;" onclick="fnShowCover();" src="spinebanner.svg">
+</div>
+
+<div id="placehere">
+</div>
+</div>
+
+<div id="coverview" hidden>
+  <img id="cover" alt="cover"/>
+  <span id="flip" onclick="fnFlip();"><img style="height: 2rem;"  src="images/flip.svg"/></span>
+</div>
+
+<script>
+
+function addSpines(albumjson) {
+
+//https://stackoverflow.com/questions/28226660/fit-n-rectangles-within-area-keeping-aspect-ratio
+  var areaHeight = document.getElementById("placehere").offsetHeight;   //set here your area height
+  var areaWidth = document.getElementById("placehere").offsetWidth;     //set here your area width
+  var N = albumjson.length;                           //set amount of rectangles you want to fit
+  var rectRatio = 65/1180;                   //set rectangle ratio
+  var gutter = [0, 4];                  //set x and y spacing between rectangles
+  var cols, rows, rectHeight, rectWidth; //variables that we need to calculate
+  
+  function rowIterator(iterator) {
+     rows = iterator;
+     cols = Math.ceil(N/rows);  
+
+     rectHeight = (areaHeight - (rows-1)*gutter[1])/rows;          
+     rectWidth = rectHeight*rectRatio;
+
+     if (cols * rectWidth + (cols - 1)*gutter[0] > areaWidth) {
+	 rowIterator(rows + 1);
+     }
+  }
+
+  rowIterator(1);                       //feed initial value
+  var size1 = [rectWidth, rectHeight];
+
+  function colIterator(iterator) {
+     cols = iterator;
+     rows = Math.ceil(N/cols);
+
+     rectWidth = (areaWidth - (cols - 1)*gutter[0])/cols;
+     rectHeight = rectWidth/rectRatio;
+
+     if (rows * rectHeight + (rows - 1)*gutter[1] > areaHeight) {
+	 colIterator(cols + 1);
+     }
+  }
+  colIterator(1);
+  var size2 = [rectWidth, rectHeight];
+   
+  optimalRectSize = [Math.max(size1[0], size2[0]), Math.max(size1[1], size2[1])]
+
+  for (var album of albumjson) {
+    let elem = document.createElement("img");
+    elem.setAttribute("src", "/getspine?id="+album.id);
+    elem.setAttribute("height", optimalRectSize[1]);
+    elem.setAttribute("width", optimalRectSize[0]);
+    elem.setAttribute("onclick", "fnPlay("+album.id+");");
+    elem.setAttribute("title", (( album.artist == "" ) ? "" : album.artist+" - ")+album.album );
+    elem.classList.add("zoomable");
+
+    document.getElementById("placehere").appendChild(elem);
+  }
+}
+
+function fnPause() {
+  fetch("cgi-bin/mpdpause.sh");
+}
+ 
+function fnHideCover() {
+  document.getElementById("coverview").hidden=true;
+}
+
+function fnFlip() {
+  let elem=document.getElementById("cover");
+  let sSrc=elem.src;
+  const sURL=sSrc.split("?");
+  let sBoF="back"
+  if (sURL[0].includes(sBoF)) {
+    sBoF="cover"
+  }
+  elem.src="/getcover?side="+sBoF+"&id"+sURL[1];
+}
+
+
+function fnShowCover() {
+  let coverElem=document.getElementById("cover");
+  let spineElem=document.getElementById("topspine");
+  if (arguments.length==1) {
+    sId=arguments[0];
+  } else
+  {
+    fetch("/cgi-bin/currentalbum.sh") //<!-- fetch provides a response -->
+      .then(response => response.text()) //<!-- response.text provides text -->
+      .then(text => sId=text);
+  } 
+  if (sId=>1){
+  spineElem.setAttribute("src","/getspine90?id="+sId);
+  coverElem.setAttribute("src","/getcover?id="+sId+"&side=back");
+  coverElem.setAttribute("height",spineElem.width);
+//<!-- I thought i'd have to adjust the height proportionally, but in FF it just does -->  
+  coverElem.setAttribute("onclick","fnHideCover();");
+  document.getElementById("coverview").hidden=false;
+  }
+}
+
+function fnPlay(sId) {
+  fnShowCover(sId);
+  fetch("cgi-bin/playentry.sh?"+sId);
+}
+
+function updateStatus()
+{
+fetch("/cgi-bin/mpdstatusjson.sh")
+  .then((response) => {
+    if (!response.ok) {
+      throw new Error(`HTTP error, status = ${response.status}`);
+    }
+//<!--    setTimeout(updateStatus, 1000) -->
+    return response.json();
+  })
+  .then((data) => {
+     if (isNaN(data.elapsed))
+     {
+       document.getElementById("status").innerHTML = "idle"
+     }
+     else
+     {
+       const elapsedWholeMinutes=Math.floor(data.elapsed/60);
+       const elapsedWholeSeconds=Math.floor(data.elapsed-elapsedWholeMinutes*60);
+       const durationWholeMinutes=Math.floor(data.duration/60);
+       const durationWholeSeconds=Math.floor(data.duration-durationWholeMinutes*60);
+       document.getElementById("status").innerHTML = elapsedWholeMinutes +":"+String(elapsedWholeSeconds).padStart(2,"0")+
+           " "+durationWholeMinutes+":"+String(durationWholeSeconds).padStart(2,"0");
+     }
+  })
+}
+
+//updateStatus();
+
+fetch("getalbumsjson")
+  .then((response) => {
+    if (!response.ok) {
+      throw new Error(`HTTP error, status = ${response.status}`);
+    }
+    return response.json();
+  })
+  .then((data) => {addSpines(data)})
+
+</script>
+</body>
+</html>
