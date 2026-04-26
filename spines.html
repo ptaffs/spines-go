@@ -86,7 +86,7 @@ body {
 
 <div id="coverview" hidden>
   <img id="cover" alt="cover"/>
-  <span id="flip" onclick="fnFlip();"><img style="height: 2rem;"  src="images/flip.svg"/></span>
+  <span id="flip" onclick="fnFlip();"><img style="height: 2rem;"  src="flip.svg"/></span>
 </div>
 
 <script>
@@ -155,13 +155,18 @@ function fnHideCover() {
 
 function fnFlip() {
   let elem=document.getElementById("cover");
-  let sSrc=elem.src;
-  const sURL=sSrc.split("?");
-  let sBoF="back"
-  if (sURL[0].includes(sBoF)) {
+
+  const url = new URL(elem.src);
+  const id = url.searchParams.get("id");
+  let sBoF = url.searchParams.get("side");
+  
+  if (sBoF == "back") {
     sBoF="cover"
   }
-  elem.src="/getcover?side="+sBoF+"&id"+sURL[1];
+  else {
+    sBoF="back"
+  }
+  elem.src="/getcover?side="+sBoF+"&id="+id;
 }
 
 

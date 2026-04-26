@@ -25,6 +25,9 @@ var bannerSVG []byte
 //go:embed spines.html
 var indexHTML []byte
 
+//go:embed flip.svg
+var flipSVG []byte
+
 type Album struct {
 	ID       int    `json:"id"`
 	Category string `json:"releasetype"`
@@ -246,6 +249,11 @@ func main() {
 	http.HandleFunc("/spinebanner.svg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		w.Write(bannerSVG)
+	})
+
+	http.HandleFunc("/flip.svg", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Write(flipSVG)
 	})
 
 	http.HandleFunc("/getcover", func(w http.ResponseWriter, r *http.Request) {
