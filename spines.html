@@ -132,6 +132,13 @@ function addSpines(albumjson) {
    
   optimalRectSize = [Math.max(size1[0], size2[0]), Math.max(size1[1], size2[1])]
 
+  albumjson.sort((a, b) => {
+  return a.releasetype.localeCompare(b.releasetype, undefined, { sensitivity: "base" })
+      || a.artist.localeCompare(b.artist, undefined, { sensitivity: "base" })
+      || a.year.localeCompare(b.year)
+      || a.album.localeCompare(b.album, undefined, { sensitivity: "base" });
+});
+
   for (var album of albumjson) {
     let elem = document.createElement("img");
     elem.setAttribute("src", "/getspine?id="+album.id);
@@ -146,7 +153,7 @@ function addSpines(albumjson) {
 }
 
 function fnPause() {
-  fetch("cgi-bin/mpdpause.sh");
+  fetch("/mpdpause");
 }
  
 function fnHideCover() {
@@ -177,7 +184,7 @@ function fnShowCover() {
     sId=arguments[0];
   } else
   {
-    fetch("/cgi-bin/currentalbum.sh") //<!-- fetch provides a response -->
+    fetch("/currentalbum") //<!-- fetch provides a response -->
       .then(response => response.text()) //<!-- response.text provides text -->
       .then(text => sId=text);
   } 
@@ -193,7 +200,7 @@ function fnShowCover() {
 
 function fnPlay(sId) {
   fnShowCover(sId);
-  fetch("cgi-bin/playentry.sh?"+sId);
+  fetch("/playentry?id="+sId);
 }
 
 function updateStatus()

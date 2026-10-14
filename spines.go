@@ -39,6 +39,30 @@ type Album struct {
 
 var albums []Album
 
+
+func readMPDcurrentsong() (string, error) {
+	conn, err := net.Dial("unix", "/run/mpd/socket")
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "currentsong\n")
+
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "OK" || strings.HasPrefix(line, "ACK") {
+			break
+		}
+		if strings.HasPrefix(line, "file: ") {
+			return strings.TrimPrefix(line, "file: "), nil
+		}
+	}
+
+	return "", fmt.Errorf("file name not found in MPD currentsong response")
+}
+
 func readMPDMusicDir() (string, error) {
 	conn, err := net.Dial("unix", "/run/mpd/socket")
 	if err != nil {
@@ -60,6 +84,46 @@ func readMPDMusicDir() (string, error) {
 	}
 
 	return "", fmt.Errorf("music_directory not found in MPD config response")
+}
+
+//send command such as load, play, pause
+func sendMPDcommand(s string) (string, error) {
+	fmt.Println(s)
+	conn, err := net.Dial("unix", "/run/mpd/socket")
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "%s\n", s)
+
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+		if line == "OK" || strings.HasPrefix(line, "ACK") {
+			return line, nil
+		}
+	}
+
+	return "", fmt.Errorf("mpd command fail")
+}
+
+func currentAlbum() (string, error) {
+	sMusicDir, err := readMPDMusicDir()
+	sSong, err:= readMPDcurrentsong()
+	if err != nil {
+		return "", err
+	}
+
+	playingPath:=strings.Trim(filepath.Dir(sSong),"/")
+	for i := range albums {
+		sTry:=strings.Trim(strings.TrimPrefix(filepath.Dir(albums[i].Path),sMusicDir),"/")
+		if sTry==playingPath {
+			return strconv.Itoa(i), nil
+		}
+	}
+	return "", nil
 }
 
 var yearRE = regexp.MustCompile(`\((\d{4})\)$`)
@@ -255,6 +319,17 @@ func main() {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		w.Write(flipSVG)
 	})
+	
+	http.HandleFunc("/currentalbum", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		sSong, err:= currentAlbum()
+		if err != nil{
+			fmt.Fprintf(w, sSong)
+		} else {
+			fmt.Fprintf(w, sSong)
+		}
+	})
+
 
 	http.HandleFunc("/getcover", func(w http.ResponseWriter, r *http.Request) {
 		sId := r.URL.Query().Get("id")
@@ -278,6 +353,43 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "image/svg+xml")
 		fmt.Fprint(w, makeCover(500, 500))
+	})
+
+	http.HandleFunc("/playentry", func(w http.ResponseWriter, r *http.Request) {
+		sRet:=""
+		idStr := r.URL.Query().Get("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id < 0 || id >= len(albums) {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		// determine valid path
+		dir := filepath.Dir(albums[id].Path)
+		for _, name := range []string{"album.m3u", "album.cue"} {
+			candidate := filepath.Join(dir, name)
+			if _, err := os.Stat(candidate); err == nil {
+		                // call mpd with candidate
+				sRet, err=sendMPDcommand(fmt.Sprintf("command_list_begin\nclear\nrandom 0\n" + 
+					"load \"%s\"\nplay\ncommand_list_end\nclose", candidate))
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+		}
+		// return okay 200 or whatever
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprint(w, sRet)
+	})
+
+	http.HandleFunc("/mpdpause", func(w http.ResponseWriter, r *http.Request) {
+		result, err := sendMPDcommand("pause")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, result)
 	})
 
 	http.HandleFunc("/getspine", func(w http.ResponseWriter, r *http.Request) {
