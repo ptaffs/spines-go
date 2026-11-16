@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"html"
 )
 
 //go:embed spinebanner.svg
@@ -123,6 +124,7 @@ func currentAlbum() (string, error) {
 			return strconv.Itoa(i), nil
 		}
 	}
+	//not an error if no song is playing
 	return "", nil
 }
 
@@ -236,7 +238,7 @@ func makeSpine(w, h int, text string) string {
 			`<rect width="100%%" height="100%%" fill="gainsboro"/>`+
 			`<text font-size="%d" text-anchor="middle" transform="translate(%d,%d) rotate(90)">%s</text>`+
 			`</svg>`,
-		w, h, w*10/15, w/2, h/2, text)
+		w, h, w*10/15, w/2, h/2, html.EscapeString(text))
 }
 
 func makeCover(w, h int) string {
@@ -323,8 +325,10 @@ func main() {
 	http.HandleFunc("/currentalbum", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		sSong, err:= currentAlbum()
-		if err != nil{
-			fmt.Fprintf(w, sSong)
+		fmt.Println(sSong)
+		//TODO come back and debug as this if seems wrong but works
+		if err != nil {
+  			fmt.Fprintf(w, "")
 		} else {
 			fmt.Fprintf(w, sSong)
 		}
@@ -414,7 +418,7 @@ func main() {
 	http.HandleFunc("/getspine90", func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.URL.Query().Get("id")
 		id, err := strconv.Atoi(idStr)
-		if err != nil || id < 0 || id > len(albums) {
+		if err != nil || id < 0 || id >= len(albums) {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
@@ -431,7 +435,8 @@ func main() {
 
 		//no spine
 		w.Header().Set("Content-Type", "image/svg+xml")
-		fmt.Fprint(w, bannerSVG)
+		w.Write(bannerSVG)
+		//fmt.Fprint(w, bannerSVG)
 	})
 
 	http.HandleFunc("/getalbumsjson", func(w http.ResponseWriter, r *http.Request) {

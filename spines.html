@@ -6,7 +6,7 @@
 <title>Spines!</title>
 <style>
 body {
-  margin:0
+  margin: 0;
   height: 100%;
   overflow-y: hidden;
 }
@@ -177,18 +177,14 @@ function fnFlip() {
 }
 
 
-function fnShowCover() {
+async function fnShowCover(sId) {
   let coverElem=document.getElementById("cover");
   let spineElem=document.getElementById("topspine");
-  if (arguments.length==1) {
-    sId=arguments[0];
-  } else
-  {
-    fetch("/currentalbum") //<!-- fetch provides a response -->
-      .then(response => response.text()) //<!-- response.text provides text -->
-      .then(text => sId=text);
-  } 
-  if (sId=>1){
+  if (sId === undefined) {
+    sId = await (await fetch("/currentalbum")).text();
+    if (sId === "") return;           // nothing matching is playing
+  }
+  if (sId>=0){
   spineElem.setAttribute("src","/getspine90?id="+sId);
   coverElem.setAttribute("src","/getcover?id="+sId+"&side=back");
   coverElem.setAttribute("height",spineElem.width);
