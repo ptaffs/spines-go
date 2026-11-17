@@ -6,3 +6,5 @@ It also scans the library on start, taking just a few seconds and keeping the da
 It still relies on music player daemon (https://www.musicpd.org/) to drive audio output, and the principle that albums are defined by the playlist file called "album.m3u" or cue in the music directory.
 
 Spines 1 defined studio albums, classical music, soundtracks by different playlist names, which were presented sequentially in the shelf, with soundtrack albums last, Spines-Go uses the first folder in the path <Music>/Albums/ <Music>/Classical/ etc which will allow flexibility to the user and simplicty in the playlist finding code. My music library was already organised this way.
+
+![Screenshot showing app in web browser](https://github.com/ptaffs/spines-go/blob/main/Screenshot.png?raw=true)
